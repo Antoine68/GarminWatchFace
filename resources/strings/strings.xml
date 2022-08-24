@@ -1,0 +1,37 @@
+<strings>
+
+    <string id="AppName">wf_fr55</string>
+
+    <string id="BackgroundColorTitle">Background Color</string>
+    <string id="ForegroundColorTitle">Foreground Color</string>
+    <string id="MilitaryFormatTitle">Military Format for 24 Hour Time</string>
+
+    <string id="ColorBlack">Black</string>
+    <string id="ColorDarkGray">Dark Gray</string>
+    <string id="ColorLightGray">Light Gray</string>
+    <string id="ColorWhite">White</string>
+    <string id="ColorBlue">Blue</string>
+    <string id="ColorRed">Red</string>
+    
+    <string id="Sun">Dim</string>
+	<string id="Mon">Lun</string>
+	<string id="Tue">Mar</string>
+	<string id="Wed">Mer</string>
+	<string id="Thu">Jeu</string>
+	<string id="Fri">Ven</string>
+	<string id="Sat">Sam</string>
+
+	<string id="Jan">Jan</string>
+	<string id="Feb">Fev</string>
+	<string id="Mar">Mar</string>
+	<string id="Apr">Apr</string>
+	<string id="May">Mai</string>
+	<string id="Jun">Jun</string>
+	<string id="Jul">Jui</string>
+	<string id="Aug">Aoû</string>
+	<string id="Sep">Sep</string>
+	<string id="Oct">Oct</string>
+	<string id="Nov">Nov</string>
+	<string id="Dec">Dec</string>
+
+</strings>

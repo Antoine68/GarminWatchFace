@@ -1,0 +1,4 @@
+<layout id="WatchFace">
+    <drawable class="Background" />
+    <label id="TimeLabel" justification="Graphics.TEXT_JUSTIFY_CENTER" />
+</layout>
