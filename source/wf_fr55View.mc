@@ -18,6 +18,9 @@ class wf_fr55View extends WatchUi.WatchFace {
     private var mMonthString;
     private var mCenterX = System.getDeviceSettings().screenWidth / 2;
     private var mCenterY = System.getDeviceSettings().screenHeight / 2;
+    private var mTimeFont;
+    private var mIconsFont;
+    private var mHRoptimized;
 
     function initialize() {
         WatchFace.initialize();
@@ -26,6 +29,8 @@ class wf_fr55View extends WatchUi.WatchFace {
     // Load your resources here
     function onLayout(dc as Dc) as Void {
         setLayout(Rez.Layouts.WatchFace(dc));
+        mTimeFont = WatchUi.loadResource(Rez.Fonts.TimeFont);
+        mIconsFont = WatchUi.loadResource(Rez.Fonts.IconsFont);
     }
 
     // Called when this View is brought to the foreground. Restore
@@ -35,8 +40,26 @@ class wf_fr55View extends WatchUi.WatchFace {
     }
 
     // Update the view
-    function onUpdate(dc as Dc) as Void {        
-        process(dc);
+    function onUpdate(dc as Dc) as Void {
+        dc.clearClip();        
+        drawTime(dc, false);
+        // Call the parent onUpdate function to redraw the layout
+        View.onUpdate(dc);
+        dc.clear();
+        dc.setPenWidth(2);
+        drawSecondHandArc(dc, false);
+        drawDate(dc);
+        drawLines(dc);
+        drawBattery(dc);
+        drawData(dc);
+    }
+    
+    function onPartialUpdate(dc as Dc) as Void {
+        //only redraw needed data
+        drawTime(dc, true);
+        View.onUpdate(dc);
+        drawSecondHandArc(dc, true);
+        drawHRText(dc, true);
     }
 
     // Called when this View is removed from the screen. Save the
@@ -51,28 +74,13 @@ class wf_fr55View extends WatchUi.WatchFace {
 
     // Terminate any active timers and prepare for slow updates.
     function onEnterSleep() as Void {
-        WatchUi.requestUpdate();
     }
     
-    function onPartialUpdate(dc as Dc) as Void {
-        process(dc);
-    }
-    
-    function process(dc as Dc) as Void {
-        drawTime(dc);
-        // Call the parent onUpdate function to redraw the layout
-        View.onUpdate(dc);
-        dc.clear();
-        dc.setPenWidth(2);
-        drawSecondHandArc(dc);
-        drawDate(dc);
-        drawLines(dc);
-        drawBattery(dc);
-        drawData(dc);
-    }
-    
-    function drawTime(dc as Dc) as Void {
+    function drawTime(dc as Dc, optimize as Boolean) as Void {
         // Get the current time and format it correctly
+        if (optimize) {
+            dc.setClip(22, 89, 164, 35);
+        }
         var timeFormat = "$1$:$2$:$3$";
         var clockTime = System.getClockTime();
         var hours = clockTime.hour;
@@ -90,16 +98,23 @@ class wf_fr55View extends WatchUi.WatchFace {
         // Update the view
         var view = View.findDrawableById("TimeLabel") as Text;
         view.setColor(getApp().getProperty("ForegroundColor") as Number);
-        view.setFont(WatchUi.loadResource(Rez.Fonts.TimeFont));
+        view.setFont(mTimeFont);
         view.setColor(Graphics.COLOR_YELLOW);
         view.setLocation(mCenterX, mCenterY - 23);
         view.setText(timeString);
     }
     
-    private function drawSecondHandArc(dc as Dc) as Void {
+    private function drawSecondHandArc(dc as Dc, optimize as Boolean) as Void {
         var sec = System.getClockTime().sec;
         if (sec > 0) {
-            dc.drawArc(mCenterX, mCenterY, mCenterX - 2, Graphics.ARC_CLOCKWISE, 90, 90 - (sec * 360 / 60));
+            var angle = 90 - (sec * 360 / 60);
+            //in optimized mode only redraw pixels that will be added to the arc
+            if (optimize) {
+                var calcX = (mCenterX + (mCenterX - 2) * Math.cos(angle * Math.PI/180));
+                var calcY = mCenterX - ((mCenterX - 2) * Math.sin(angle * Math.PI/180));
+                dc.setClip(calcX - 10, calcY - 10, 25, 25);
+            }
+            dc.drawArc(mCenterX, mCenterY, mCenterX - 2, Graphics.ARC_CLOCKWISE, 90, angle);
         }
     }
     
@@ -111,7 +126,7 @@ class wf_fr55View extends WatchUi.WatchFace {
     
     private function drawDate(dc as Dc) as Void {
         var rezStrings = Rez.Strings;
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         
         var dateFormat = "$1$ $2$ $3$ $4$";
         var now = Time.Gregorian.info(Time.now(), Time.FORMAT_SHORT);
@@ -153,7 +168,7 @@ class wf_fr55View extends WatchUi.WatchFace {
                 batteryColor = Graphics.COLOR_GREEN;
             }
         } else if (batteryLevel == 100) {
-            batteryColor = Graphics.COLOR_LT_GRAY;
+            batteryColor = Graphics.COLOR_WHITE;
         }
         dc.setColor(batteryColor, Graphics.COLOR_TRANSPARENT);
         var lineWidthPlusMargin = (/* BATTERY_LINE_WIDTH */ 2 + BATTERY_MARGIN);
@@ -163,19 +178,37 @@ class wf_fr55View extends WatchUi.WatchFace {
     }
     
     private function drawData(dc as Dc) as Void {
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         
         dc.drawText(65, 37, Graphics.FONT_XTINY, ActivityMonitor.getInfo().steps, Graphics.TEXT_JUSTIFY_CENTER);
         dc.drawText(System.getDeviceSettings().screenWidth - 65, 37, Graphics.FONT_XTINY, (ActivityMonitor.getInfo().distance/100000.0).format("%.2f"), Graphics.TEXT_JUSTIFY_CENTER);
-        var heartRate = Activity.getActivityInfo().currentHeartRate;
-        dc.drawText(65, System.getDeviceSettings().screenHeight - 45, Graphics.FONT_XTINY, heartRate ? heartRate : "--", Graphics.TEXT_JUSTIFY_CENTER);
+        drawHRText(dc, false);
         dc.drawText(System.getDeviceSettings().screenWidth - 65, System.getDeviceSettings().screenHeight - 45, Graphics.FONT_XTINY, ActivityMonitor.getInfo().calories, Graphics.TEXT_JUSTIFY_CENTER);
 
-        dc.drawText(65, 12, WatchUi.loadResource(Rez.Fonts.IconsFont), 0, Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(System.getDeviceSettings().screenWidth - 65, 12, WatchUi.loadResource(Rez.Fonts.IconsFont), 7, Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(65, System.getDeviceSettings().screenHeight - 70, WatchUi.loadResource(Rez.Fonts.IconsFont), 3, Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(System.getDeviceSettings().screenWidth - 65, System.getDeviceSettings().screenHeight - 70, WatchUi.loadResource(Rez.Fonts.IconsFont), 6, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(65, 12, mIconsFont, 0, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(System.getDeviceSettings().screenWidth - 65, 12, mIconsFont, 7, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(65, System.getDeviceSettings().screenHeight - 70, mIconsFont, 3, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(System.getDeviceSettings().screenWidth - 65, System.getDeviceSettings().screenHeight - 70, mIconsFont, 6, Graphics.TEXT_JUSTIFY_CENTER);
 
+    }
+    
+    private function drawHRText(dc as Dc, optimize as Boolean) as Void {
+        //in optimized mode only update HR every 10 sec
+        if(optimize && System.getClockTime().sec % 10 != 0) {
+            return;
+        }
+        var heartRate = Activity.getActivityInfo().currentHeartRate;
+        if(optimize) {
+            //if its equals to previous HR value no need to redraw
+            if (mHRoptimized == heartRate) {
+                return;
+            }
+            dc.setClip(45, 165, 35, 20);
+            View.onUpdate(dc);
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        }
+        mHRoptimized = heartRate;
+        dc.drawText(65, System.getDeviceSettings().screenHeight - 45, Graphics.FONT_XTINY, heartRate ? heartRate : "--", Graphics.TEXT_JUSTIFY_CENTER);
     }
 
 }
